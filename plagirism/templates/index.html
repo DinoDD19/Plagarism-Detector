@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Multi-Modal Plagiarism Detector</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 600px;
+            margin-top: 60px;
+        }
+        .card {
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+        }
+        .form-label {
+            font-weight: 500;
+        }
+        .result-icon {
+            font-size: 2.5rem;
+        }
+        .instructions {
+            background: #e0e7ff;
+            border-radius: 8px;
+            padding: 18px 20px;
+            margin-bottom: 24px;
+        }
+        .step {
+            margin-bottom: 8px;
+        }
+        .type-select {
+            margin-bottom: 1.5rem;
+        }
+    </style>
+    <script>
+        function showForm() {
+            var type = document.getElementById('plagiarismType').value;
+            document.getElementById('imageForm').style.display = (type === 'image') ? 'block' : 'none';
+            document.getElementById('textForm').style.display = (type === 'text') ? 'block' : 'none';
+            document.getElementById('codeForm').style.display = (type === 'code') ? 'block' : 'none';
+        }
+        window.onload = showForm;
+    </script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1 mx-auto">Multi-Modal Plagiarism Detector</span>
+        </div>
+    </nav>
+    <div class="container">
+        <div class="instructions mt-4">
+            <h4 class="mb-2">What does this tool do?</h4>
+            <p>This web app helps you detect potential plagiarism or copying between two <b>images</b>, <b>text documents</b>, or <b>code snippets</b>. It uses advanced algorithms to compare the similarity between your inputs, even if they have been slightly edited.</p>
+            <h5 class="mt-3 mb-2">How to use:</h5>
+            <ol class="mb-0">
+                <li class="step">Select the type of content you want to check: <b>Image</b>, <b>Text</b>, or <b>Code</b>.</li>
+                <li class="step">Provide the two items to compare (upload images, paste text/code, or upload files).</li>
+                <li class="step">Press <b>Compare</b> to analyze the similarity.</li>
+                <li class="step">View the result below to see if potential plagiarism is detected.</li>
+            </ol>
+            <div class="mt-2 text-muted" style="font-size: 0.97em;">
+                <span>&#9432;</span> Your data is processed locally and not stored.
+            </div>
+        </div>
+        <div class="card p-4 mt-2">
+            <h3 class="mb-3 text-center">Compare for Plagiarism</h3>
+            <form method="post" enctype="multipart/form-data">
+                <div class="type-select">
+                    <label for="plagiarismType" class="form-label">Select Type:</label>
+                    <select class="form-select" id="plagiarismType" name="plagiarismType" onchange="showForm()">
+                        <option value="image">Image</option>
+                        <option value="text">Text</option>
+                        <option value="code">Code</option>
+                    </select>
+                </div>
+                <!-- Image Form -->
+                <div id="imageForm">
+                    <div class="mb-3">
+                        <label class="form-label" for="image1">Upload Image 1</label>
+                        <input type="file" class="form-control" id="image1" name="image1" accept="image/*" title="Select the first image to check for plagiarism.">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="image2">Upload Image 2</label>
+                        <input type="file" class="form-control" id="image2" name="image2" accept="image/*" title="Select the second image to compare against the first.">
+                    </div>
+                </div>
+                <!-- Text Form -->
+                <div id="textForm" style="display:none;">
+                    <div class="mb-3">
+                        <label class="form-label" for="text1">Paste Text 1</label>
+                        <textarea class="form-control" id="text1" name="text1" rows="4" placeholder="Paste or type the first text document here..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="text2">Paste Text 2</label>
+                        <textarea class="form-control" id="text2" name="text2" rows="4" placeholder="Paste or type the second text document here..."></textarea>
+                    </div>
+                </div>
+                <!-- Code Form -->
+                <div id="codeForm" style="display:none;">
+                    <div class="mb-3">
+                        <label class="form-label" for="code1">Paste Code 1</label>
+                        <textarea class="form-control" id="code1" name="code1" rows="4" placeholder="Paste or type the first code snippet here..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="code2">Paste Code 2</label>
+                        <textarea class="form-control" id="code2" name="code2" rows="4" placeholder="Paste or type the second code snippet here..."></textarea>
+                    </div>
+                </div>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary btn-lg">Compare</button>
+                </div>
+            </form>
+            {% if result %}
+                <div class="mt-4">
+                    <div class="card text-center {% if result.plagiarized %}border-danger{% elif result.paraphrased %}border-warning{% else %}border-success{% endif %}">
+                        <div class="card-body">
+                            {% if result.plagiarized %}
+                                <div class="result-icon text-danger mb-2">&#9888;</div>
+                                <h5 class="card-title text-danger">Potential Plagiarism Detected!</h5>
+                                <p class="card-text">The two items are nearly identical. This may indicate direct copying or only trivial changes.</p>
+                            {% elif result.paraphrased %}
+                                <div class="result-icon text-warning mb-2">&#128172;</div>
+                                <h5 class="card-title text-warning">Possible Paraphrasing Detected</h5>
+                                <p class="card-text">The two items are highly similar in meaning, but not identical. This may indicate paraphrasing or rewording.</p>
+                            {% else %}
+                                <div class="result-icon text-success mb-2">&#10004;</div>
+                                <h5 class="card-title text-success">Items are Likely Different</h5>
+                                <p class="card-text">The items do not appear to be plagiarized or copied from each other.</p>
+                            {% endif %}
+                            <p class="card-text">Similarity Score: <strong>{{ result.similarity }}</strong></p>
+                            {% if result.online_similarity %}
+                                <div class="alert alert-info mt-3" role="alert">
+                                    <b>Most similar online snippet found:</b><br>
+                                    <em>{{ result.online_similarity }}</em>
+                                </div>
+                            {% endif %}
+                            <div class="text-muted" style="font-size: 0.95em;">
+                                <span>&#9432;</span> Higher score means more similarity. For images, a low Hamming distance means high similarity. For text/code, a high semantic similarity means high similarity.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        <footer class="text-center mt-5 text-muted">
+            <small>&copy; 2024 Multi-Modal Plagiarism Detector. Powered by perceptual hashing and text similarity technology.</small>
+        </footer>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 
