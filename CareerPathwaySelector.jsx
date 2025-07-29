@@ -28,6 +28,81 @@ const CareerPathwaySelector = () => {
 
   const [pathwayProgress, setPathwayProgress] = useState(0);
   const [selectedCareer, setSelectedCareer] = useState(null);
+  const [learningPersonality, setLearningPersonality] = useState(null);
+
+  // Learning personality types
+  const learningPersonalities = {
+    sprinter: {
+      type: "The Sprinter",
+      emoji: "🔥",
+      description: "High-energy learner who thrives on quick wins and competitive challenges",
+      studyPattern: "25-min sprints with gamified timers",
+      tools: ["Countdown challenges", "Leaderboard rankings", "Achievement badges"],
+      goalSetting: "Daily mini-targets, quick rewards",
+      subjectsFormat: "Quizzes, competitions, speed drills",
+      characteristics: ["Fast-paced", "Competitive", "Goal-oriented", "Reward-driven"]
+    },
+    creator: {
+      type: "The Creator",
+      emoji: "🎨",
+      description: "Innovative learner who enjoys open-ended projects and creative expression",
+      studyPattern: "Flexible blocks for open-ended work",
+      tools: ["Canva-style creativity tasks", "Multimedia inputs", "Design platforms"],
+      goalSetting: "Weekly project outcomes",
+      subjectsFormat: "Design tasks, creative writing, visual simulations",
+      characteristics: ["Creative", "Flexible", "Visual", "Project-based"]
+    },
+    strategist: {
+      type: "The Strategist",
+      emoji: "🧠",
+      description: "Analytical learner who prefers structured, deep-dive sessions",
+      studyPattern: "Deep-dive sessions, weekly planning",
+      tools: ["Mind maps", "Note journals", "Flashcard systems"],
+      goalSetting: "Long-term roadmap broken into milestones",
+      subjectsFormat: "Analytical problems, case studies, step-by-step logic building",
+      characteristics: ["Analytical", "Structured", "Long-term focused", "Detail-oriented"]
+    },
+    hustler: {
+      type: "The Hustler",
+      emoji: "⚡",
+      description: "Dynamic learner who prefers short, high-impact learning bursts",
+      studyPattern: "Short, dynamic 15-20 minute bursts",
+      tools: ["Pop quizzes", "Interactive slides", "Daily refreshers"],
+      goalSetting: "Weekly XP points or streaks",
+      subjectsFormat: "Flash rounds, interactive theory",
+      characteristics: ["High-energy", "Streak-focused", "Interactive", "Results-driven"]
+    },
+    flowSeeker: {
+      type: "The Flow-Seeker",
+      emoji: "🌊",
+      description: "Deep-focus learner who needs uninterrupted, immersive sessions",
+      studyPattern: "60–90 min uninterrupted learning blocks",
+      tools: ["Calm visuals", "Ambient sound", "Full-screen mode"],
+      goalSetting: "2–3 sessions a week with deeper goals",
+      subjectsFormat: "Long-form reading, reflective prompts, in-depth tutorials",
+      characteristics: ["Deep-focus", "Reflective", "Immersive", "Quality over quantity"]
+    },
+    builder: {
+      type: "The Builder",
+      emoji: "🛠",
+      description: "Hands-on learner who learns best through practical application",
+      studyPattern: "Learn → Apply → Reflect model",
+      tools: ["Simulation labs", "Tinkering tasks", "Blueprints"],
+      goalSetting: "Prototype deadlines or real-life use cases",
+      subjectsFormat: "Tool-based learning, field activities, apprenticeships",
+      characteristics: ["Practical", "Hands-on", "Application-focused", "Real-world oriented"]
+    },
+    explorer: {
+      type: "The Explorer",
+      emoji: "🗺",
+      description: "Curious learner who enjoys variety and discovering new topics",
+      studyPattern: "Rotating themes each week",
+      tools: ["Randomizer wheel", "Mystery modules", "Challenge packs"],
+      goalSetting: "Explore 1 new thing per day/week",
+      subjectsFormat: "Cross-topic projects, curiosity-driven tasks",
+      characteristics: ["Curious", "Variety-seeking", "Exploratory", "Cross-disciplinary"]
+    }
+  };
 
   // Sample career paths database
   const careerPaths = {
@@ -53,6 +128,163 @@ const CareerPathwaySelector = () => {
         { id: 4, title: "Real-world Projects", duration: "Ongoing", completed: false }
       ]
     }
+  };
+
+  // Generate personalized learning recommendations based on personality type and career
+  const generatePersonalizedRecommendations = (interests, career, personality) => {
+    const baseRecommendations = generateRecommendations(interests, career);
+    
+    if (!personality) return baseRecommendations;
+
+    const personalityType = learningPersonalities[personality];
+    
+    // Customize recommendations based on learning personality
+    return {
+      ...baseRecommendations,
+      personalizedDailyTasks: generatePersonalizedTasks(career, personality),
+      studySchedule: generateStudySchedule(personality),
+      learningTools: personalityType.tools,
+      goalStructure: personalityType.goalSetting
+    };
+  };
+
+  const generatePersonalizedTasks = (career, personality) => {
+    const personalityType = learningPersonalities[personality];
+    const baseTasks = {
+      archaeologist: [
+        "Read archaeology research paper",
+        "Practice artifact sketching",
+        "Study ancient language basics",
+        "Watch excavation documentaries",
+        "Join archaeology forums"
+      ],
+      dataScientist: [
+        "Code in Python/R",
+        "Solve Kaggle problems",
+        "Read data science articles",
+        "Practice SQL queries",
+        "Build mini ML projects"
+      ]
+    };
+
+    const tasks = baseTasks[career] || baseTasks.archaeologist;
+    
+    // Customize tasks based on personality
+    switch(personality) {
+      case 'sprinter':
+        return tasks.map(task => ({
+          task: `${task} (25-min sprint)`,
+          time: "25 mins",
+          impact: "High",
+          format: "Timed challenge",
+          reward: "Achievement badge"
+        }));
+      case 'creator':
+        return tasks.map(task => ({
+          task: `Create visual summary of: ${task}`,
+          time: "45-60 mins",
+          impact: "High",
+          format: "Creative project",
+          reward: "Portfolio addition"
+        }));
+      case 'strategist':
+        return tasks.map(task => ({
+          task: `Deep analysis: ${task}`,
+          time: "60-90 mins",
+          impact: "Very High",
+          format: "Structured study",
+          reward: "Milestone progress"
+        }));
+      case 'hustler':
+        return tasks.map(task => ({
+          task: `Quick burst: ${task}`,
+          time: "15-20 mins",
+          impact: "Medium",
+          format: "Interactive session",
+          reward: "XP points"
+        }));
+      case 'flowSeeker':
+        return tasks.map(task => ({
+          task: `Immersive session: ${task}`,
+          time: "90 mins",
+          impact: "Very High",
+          format: "Deep focus",
+          reward: "Deep understanding"
+        }));
+      case 'builder':
+        return tasks.map(task => ({
+          task: `Hands-on practice: ${task}`,
+          time: "60 mins",
+          impact: "High",
+          format: "Applied learning",
+          reward: "Real project"
+        }));
+      case 'explorer':
+        return tasks.map(task => ({
+          task: `Explore connections: ${task}`,
+          time: "30-45 mins",
+          impact: "Medium",
+          format: "Discovery session",
+          reward: "New knowledge"
+        }));
+      default:
+        return tasks.map(task => ({
+          task,
+          time: "30 mins",
+          impact: "Medium",
+          format: "Standard",
+          reward: "Progress"
+        }));
+    }
+  };
+
+  const generateStudySchedule = (personality) => {
+    const schedules = {
+      sprinter: {
+        pattern: "Multiple 25-min sprints with 5-min breaks",
+        frequency: "4-6 sessions daily",
+        bestTime: "High-energy periods",
+        weeklyStructure: "Daily challenges with weekend competitions"
+      },
+      creator: {
+        pattern: "Flexible 2-3 hour creative blocks",
+        frequency: "3-4 sessions weekly",
+        bestTime: "When inspiration strikes",
+        weeklyStructure: "Weekly project deadlines"
+      },
+      strategist: {
+        pattern: "90-120 min focused sessions",
+        frequency: "4-5 sessions weekly",
+        bestTime: "Morning or dedicated study hours",
+        weeklyStructure: "Planned curriculum with monthly reviews"
+      },
+      hustler: {
+        pattern: "15-20 min high-intensity bursts",
+        frequency: "6-8 sessions daily",
+        bestTime: "Throughout the day",
+        weeklyStructure: "Daily streaks with weekly goals"
+      },
+      flowSeeker: {
+        pattern: "90 min uninterrupted deep dives",
+        frequency: "2-3 sessions weekly",
+        bestTime: "Quiet, distraction-free periods",
+        weeklyStructure: "Fewer but deeper sessions"
+      },
+      builder: {
+        pattern: "Learn (30min) → Apply (60min) → Reflect (30min)",
+        frequency: "3-4 sessions weekly",
+        bestTime: "When you can practice immediately",
+        weeklyStructure: "Project-based with real deadlines"
+      },
+      explorer: {
+        pattern: "Rotating 45-min themed sessions",
+        frequency: "5-6 sessions weekly",
+        bestTime: "When curious and alert",
+        weeklyStructure: "Different theme each day"
+      }
+    };
+    
+    return schedules[personality] || schedules.strategist;
   };
 
   // AI-driven recommendation engine simulation
@@ -330,7 +562,7 @@ const CareerPathwaySelector = () => {
 
     const handleSubmit = () => {
       setUserData({ ...userData, dailyRoutines: answers });
-      setCurrentStep('careerMatch');
+      setCurrentStep('learningStyle');
     };
 
     return (
@@ -365,8 +597,81 @@ const CareerPathwaySelector = () => {
           disabled={Object.keys(answers).length < routineQuestions.length}
           className="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
         >
-          Get Career Matches
+          Discover Learning Style
         </button>
+      </div>
+    );
+  };
+
+  const LearningStyleAssessment = () => {
+    const [selectedPersonality, setSelectedPersonality] = useState(null);
+
+    const handlePersonalitySelect = (personalityKey) => {
+      setSelectedPersonality(personalityKey);
+    };
+
+    const proceedToCareerMatch = () => {
+      setLearningPersonality(selectedPersonality);
+      setCurrentStep('careerMatch');
+    };
+
+    return (
+      <div className="max-w-4xl mx-auto">
+        <h2 className="text-2xl font-bold mb-6 text-center">Discover Your Learning Personality</h2>
+        <p className="text-gray-600 mb-8 text-center">
+          Choose the learning style that resonates most with you. This will personalize your entire learning journey.
+        </p>
+        
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          {Object.entries(learningPersonalities).map(([key, personality]) => (
+            <div
+              key={key}
+              onClick={() => handlePersonalitySelect(key)}
+              className={`p-6 rounded-xl border-2 cursor-pointer transition-all hover:shadow-lg ${
+                selectedPersonality === key
+                  ? 'border-blue-600 bg-blue-50 shadow-lg'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className="text-center mb-4">
+                <div className="text-4xl mb-2">{personality.emoji}</div>
+                <h3 className="text-lg font-bold">{personality.type}</h3>
+              </div>
+              
+              <p className="text-sm text-gray-600 mb-4 text-center">
+                {personality.description}
+              </p>
+              
+              <div className="space-y-2">
+                <div className="text-xs">
+                  <span className="font-medium">Study Pattern:</span>
+                  <p className="text-gray-600">{personality.studyPattern}</p>
+                </div>
+                
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {personality.characteristics.map((char, index) => (
+                    <span
+                      key={index}
+                      className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded"
+                    >
+                      {char}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="text-center">
+          <button
+            onClick={proceedToCareerMatch}
+            disabled={!selectedPersonality}
+            className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            Continue to Career Match
+          </button>
+        </div>
       </div>
     );
   };
@@ -387,7 +692,7 @@ const CareerPathwaySelector = () => {
 
     const selectCareer = () => {
       setSelectedCareer(career);
-      setRecommendations(generateRecommendations(userData.interests, career));
+      setRecommendations(generatePersonalizedRecommendations(userData.interests, career, learningPersonality));
       setCurrentStep('pathway');
     };
 
@@ -427,13 +732,38 @@ const CareerPathwaySelector = () => {
 
   const PathwayDashboard = () => {
     const career = careerPaths[selectedCareer];
+    const personality = learningPersonalities[learningPersonality];
     
     return (
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Your {career.title} Journey</h1>
-          <p className="text-gray-600">Welcome back, {userData.name}! Here's your personalized pathway.</p>
+          <p className="text-gray-600">Welcome back, {userData.name}! Here's your personalized pathway as {personality?.emoji} {personality?.type}.</p>
         </div>
+
+        {/* Learning Personality Card */}
+        {personality && (
+          <div className="bg-gradient-to-r from-purple-500 to-pink-600 text-white p-6 rounded-xl mb-8">
+            <div className="flex items-center mb-4">
+              <span className="text-3xl mr-3">{personality.emoji}</span>
+              <div>
+                <h3 className="text-xl font-semibold">{personality.type} Learning Style</h3>
+                <p className="text-purple-100">{personality.description}</p>
+              </div>
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-4 mt-4">
+              <div>
+                <h4 className="font-semibold mb-2">Your Study Pattern:</h4>
+                <p className="text-purple-100 text-sm">{personality.studyPattern}</p>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-2">Goal Setting Style:</h4>
+                <p className="text-purple-100 text-sm">{personality.goalSetting}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Progress Overview */}
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 rounded-xl mb-8">
@@ -457,7 +787,7 @@ const CareerPathwaySelector = () => {
               Today's Tasks
             </h3>
             <div className="space-y-3">
-              {recommendations.dailyTasks.map((task, index) => (
+              {(recommendations.personalizedDailyTasks || recommendations.dailyTasks).map((task, index) => (
                 <div key={index} className="flex items-start space-x-3">
                   <input type="checkbox" className="mt-1" />
                   <div className="flex-1">
@@ -466,7 +796,13 @@ const CareerPathwaySelector = () => {
                       <Clock className="w-3 h-3 mr-1" />
                       {task.time}
                       <span className="ml-3 text-blue-600">Impact: {task.impact}</span>
+                      {task.format && <span className="ml-3 text-purple-600">Format: {task.format}</span>}
                     </div>
+                    {task.reward && (
+                      <div className="text-xs text-green-600 mt-1">
+                        🎁 Reward: {task.reward}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -503,6 +839,49 @@ const CareerPathwaySelector = () => {
             </div>
           </div>
         </div>
+
+        {/* Personalized Study Schedule */}
+        {recommendations.studySchedule && (
+          <div className="bg-white p-6 rounded-xl border mb-8">
+            <h3 className="text-lg font-semibold mb-4 flex items-center">
+              <Calendar className="w-5 h-5 mr-2 text-indigo-600" />
+              Your Personalized Study Schedule
+            </h3>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="font-medium mb-2">Study Pattern:</h4>
+                <p className="text-sm text-gray-600 mb-3">{recommendations.studySchedule.pattern}</p>
+                
+                <h4 className="font-medium mb-2">Frequency:</h4>
+                <p className="text-sm text-gray-600 mb-3">{recommendations.studySchedule.frequency}</p>
+              </div>
+              <div>
+                <h4 className="font-medium mb-2">Best Time:</h4>
+                <p className="text-sm text-gray-600 mb-3">{recommendations.studySchedule.bestTime}</p>
+                
+                <h4 className="font-medium mb-2">Weekly Structure:</h4>
+                <p className="text-sm text-gray-600">{recommendations.studySchedule.weeklyStructure}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Learning Tools Section */}
+        {recommendations.learningTools && (
+          <div className="bg-white p-6 rounded-xl border mb-8">
+            <h3 className="text-lg font-semibold mb-4 flex items-center">
+              <Brain className="w-5 h-5 mr-2 text-green-600" />
+              Recommended Learning Tools for {personality?.type}
+            </h3>
+            <div className="grid md:grid-cols-3 gap-3">
+              {recommendations.learningTools.map((tool, index) => (
+                <div key={index} className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <span className="text-sm font-medium text-green-800">{tool}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Recommendations Grid */}
         <div className="grid md:grid-cols-3 gap-6">
@@ -589,6 +968,8 @@ const CareerPathwaySelector = () => {
         return <HobbiesScreen />;
       case 'dailyRoutine':
         return <DailyRoutineScreen />;
+      case 'learningStyle':
+        return <LearningStyleAssessment />;
       case 'careerMatch':
         return <CareerMatchScreen />;
       case 'pathway':
@@ -607,14 +988,14 @@ const CareerPathwaySelector = () => {
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm text-gray-600">Progress</span>
               <span className="text-sm text-gray-600">
-                Step {['basicInfo', 'interests', 'hobbies', 'dailyRoutine', 'careerMatch'].indexOf(currentStep) + 1} of 5
+                Step {['basicInfo', 'interests', 'hobbies', 'dailyRoutine', 'learningStyle', 'careerMatch'].indexOf(currentStep) + 1} of 6
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
                 className="bg-blue-600 rounded-full h-2 transition-all duration-500"
                 style={{ 
-                  width: `${((['basicInfo', 'interests', 'hobbies', 'dailyRoutine', 'careerMatch'].indexOf(currentStep) + 1) / 5) * 100}%`
+                  width: `${((['basicInfo', 'interests', 'hobbies', 'dailyRoutine', 'learningStyle', 'careerMatch'].indexOf(currentStep) + 1) / 6) * 100}%`
                 }}
               />
             </div>
