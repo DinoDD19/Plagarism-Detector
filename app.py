@@ -14,8 +14,8 @@ app = Flask(__name__, template_folder='plagirism/templates', static_folder='plag
 app.config['UPLOAD_FOLDER'] = 'plagirism/uploads'
 
 # Google Custom Search API credentials from environment variables
-GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY', 'AIzaSyA3x44KtcD1wnQrVZ6wgrv5mei_TVX3hVI')
-GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID', 'f320073fbf8424752')
+GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY', '')
+GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID', '')
 
 # Ensure upload folder exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -116,4 +116,6 @@ def index():
     return render_template('index.html', result=result)
 
 if __name__ == '__main__':
-    app.run(debug=True) 
+    # Only enable debug mode if explicitly set in environment
+    debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(debug=debug_mode) 
