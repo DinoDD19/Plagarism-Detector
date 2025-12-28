@@ -1,3 +1,8 @@
 uploads/
 __pycache__/
-*.pyc 
+*.pyc
+.env
+*.db
+venv/
+env/
+.DS_Store 

@@ -5,13 +5,17 @@ import os
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
 import requests
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__, template_folder='plagirism/templates', static_folder='plagirism')
 app.config['UPLOAD_FOLDER'] = 'plagirism/uploads'
 
-# Google Custom Search API credentials
-GOOGLE_API_KEY = 'AIzaSyA3x44KtcD1wnQrVZ6wgrv5mei_TVX3hVI'
-GOOGLE_CSE_ID = 'f320073fbf8424752'
+# Google Custom Search API credentials from environment variables
+GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY', 'AIzaSyA3x44KtcD1wnQrVZ6wgrv5mei_TVX3hVI')
+GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID', 'f320073fbf8424752')
 
 # Ensure upload folder exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
