@@ -5,6 +5,7 @@ import os
 import threading
 import difflib
 import requests
+import time
 
 app = Flask(__name__, template_folder='plagirism/templates', static_folder='plagirism')
 app.config['UPLOAD_FOLDER'] = 'plagirism/uploads'
@@ -15,6 +16,7 @@ GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID', '')
 # Hugging Face Inference API (optional)
 HF_API_TOKEN = os.getenv('HF_API_TOKEN', '')
 HF_MODEL_ID = os.getenv('HF_MODEL_ID', 'sentence-transformers/all-MiniLM-L6-v2')
+USE_HF_API = bool(HF_API_TOKEN)
 
 # Ensure upload folder exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -41,20 +43,39 @@ def install_ml_packages():
     try:
         import subprocess, sys
         update_loading_status('installing', 'Installing text ML packages...', 10)
+
+        # Live pulse while pip runs
+        stop_event = threading.Event()
+        def _pulse_install():
+            local_progress = 12
+            while not stop_event.wait(1.2):
+                local_progress = min(45, local_progress + 2)
+                update_loading_status('installing', 'Installing text ML packages...', local_progress)
+        pulse_thread = threading.Thread(target=_pulse_install, daemon=True)
+        pulse_thread.start()
+
         # Install sentence-transformers and numpy when user selects Text mode
         subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-q', 'sentence-transformers>=2.2.0', 'numpy>=1.24.0'])
+
+        stop_event.set()
+        pulse_thread.join(timeout=0.1)
         ml_packages_installed = True
         update_loading_status('packages_installed', 'Packages installed. Preparing model...', 50)
         return True
     except Exception as e:
+        try:
+            stop_event.set()
+        except Exception:
+            pass
         update_loading_status('error', f'Failed to install ML packages: {e}', 0)
         return False
 
 def get_embedder():
     global embedder
+    global USE_HF_API
     if embedder is None:
         # If using HF API, no local model needed
-        if HF_API_TOKEN:
+        if USE_HF_API and HF_API_TOKEN:
             update_loading_status('ready', 'Using Hugging Face Inference API', 100)
             return None
         # Ensure required packages are present
@@ -62,10 +83,24 @@ def get_embedder():
             return None
         try:
             update_loading_status('loading_model', 'Downloading ML model (one-time setup)...', 60)
+            stop_event = threading.Event()
+            def _pulse_model():
+                local_progress = 62
+                while not stop_event.wait(1.2):
+                    local_progress = min(95, local_progress + 3)
+                    update_loading_status('loading_model', 'Downloading ML model (one-time setup)...', local_progress)
+            pulse_thread = threading.Thread(target=_pulse_model, daemon=True)
+            pulse_thread.start()
             from sentence_transformers import SentenceTransformer
             embedder = SentenceTransformer(MODEL_NAME, cache_folder=HF_CACHE_DIR)
+            stop_event.set()
+            pulse_thread.join(timeout=0.1)
             update_loading_status('ready', 'ML model ready!', 100)
         except Exception as e:
+            try:
+                stop_event.set()
+            except Exception:
+                pass
             update_loading_status('error', f'Failed to load model: {e}', 0)
             return None
     return embedder
@@ -76,8 +111,8 @@ def quick_similarity(text1, text2):
 
 def semantic_similarity(text1, text2):
     try:
-        # Prefer Hugging Face Inference API if token provided (no local downloads)
-        if HF_API_TOKEN:
+        # Prefer Hugging Face Inference API if enabled (no local downloads)
+        if USE_HF_API and HF_API_TOKEN:
             try:
                 api_url = f"https://api-inference.huggingface.co/models/{HF_MODEL_ID}"
                 headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
@@ -139,7 +174,7 @@ def search_google_snippets(query, num_results=5):
 @app.route('/warm-text-model', methods=['POST'])
 def warm_text_model():
     # If using HF API, mark ready immediately (no local downloads)
-    if HF_API_TOKEN:
+    if USE_HF_API and HF_API_TOKEN:
         update_loading_status('ready', 'Using Hugging Face Inference API', 100)
         return {'status': 'api_ready'}
     # Else load locally in background
@@ -150,6 +185,33 @@ def warm_text_model():
             pass
     threading.Thread(target=_bg_load, daemon=True).start()
     return {'status': 'started'}
+
+# Inference mode endpoints for UI toggle
+@app.route('/get-text-inference-mode', methods=['GET'])
+def get_text_inference_mode():
+    from flask import jsonify
+    return jsonify({'mode': 'api' if (USE_HF_API and HF_API_TOKEN) else 'local', 'has_token': bool(HF_API_TOKEN)})
+
+@app.route('/set-text-inference-mode', methods=['POST'])
+def set_text_inference_mode():
+    global USE_HF_API
+    try:
+        data = request.get_json(force=True) or {}
+        mode = (data.get('mode') or '').lower()
+        if mode == 'api':
+            if not HF_API_TOKEN:
+                return {'ok': False, 'error': 'HF_API_TOKEN not set'}, 400
+            USE_HF_API = True
+            update_loading_status('ready', 'Using Hugging Face Inference API', 100)
+            return {'ok': True, 'mode': 'api'}
+        elif mode == 'local':
+            USE_HF_API = False
+            update_loading_status('not_started', 'Local model will load on first use', 0)
+            return {'ok': True, 'mode': 'local'}
+        else:
+            return {'ok': False, 'error': 'Invalid mode'}, 400
+    except Exception as e:
+        return {'ok': False, 'error': str(e)}, 500
 
 # ---------- Text helpers (ensemble similarity) ----------
 def _normalize_text(s: str) -> str:

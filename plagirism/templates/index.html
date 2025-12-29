@@ -279,6 +279,46 @@
             font-weight: 600;
             font-size: 0.85rem;
         }
+
+        .loading-history {
+            text-align: left;
+            margin-top: 12px;
+            background: var(--instructions-bg);
+            border: 1px dashed var(--border-color);
+            border-radius: 10px;
+            padding: 10px 12px;
+            max-height: 140px;
+            overflow: hidden;
+        }
+
+        .history-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .history-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .history-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--tab-active);
+            margin-right: 8px;
+            flex-shrink: 0;
+            animation: pulse 1.2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 0.7; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(0.9); opacity: 0.7; }
+        }
         
         .loading-message {
             color: var(--text-primary);
@@ -384,6 +424,7 @@
             <div class="loading-tip" id="loadingTip">
                 <i class="fas fa-info-circle me-2"></i>This is a one-time setup. ML models are being downloaded and installed.
             </div>
+            <div class="loading-history" id="loadingHistory"></div>
         </div>
     </div>
     
@@ -410,6 +451,17 @@
         <button class="theme-btn" data-theme="sunset" title="Sunset Theme">
             <i class="fas fa-fire"></i>
         </button>
+    </div>
+
+    <!-- Text Inference Mode Switcher -->
+    <div class="theme-switcher" style="top: 140px;">
+        <div class="d-flex align-items-center" style="gap:8px;">
+            <span class="text-muted" style="font-weight:600;">Text Inference:</span>
+            <select id="inferenceModeSelect" class="form-select form-select-sm" style="width:auto;">
+                <option value="api">Cloud (HF API)</option>
+                <option value="local">Local (on-demand)</option>
+            </select>
+        </div>
     </div>
     
     <div class="container">
@@ -595,9 +647,15 @@
         const progressText = document.getElementById('progressText');
         const loadingMessage = document.getElementById('loadingMessage');
         const loadingTip = document.getElementById('loadingTip');
+        const loadingHistory = document.getElementById('loadingHistory');
         const closeLoadingBtn = document.getElementById('closeLoadingBtn');
+        const inferenceModeSelect = document.getElementById('inferenceModeSelect');
         let statusCheckInterval;
         let hasCheckedOnce = false;
+        let statusHistory = [];
+        let lastSnapshot = '';
+        let currentProgress = 0;
+        let currentStatus = 'not_started';
         
         // Close/minimize button handler
         closeLoadingBtn.addEventListener('click', () => {
@@ -609,6 +667,37 @@
         loadingMessage.textContent = 'Checking ML model status...';
         progressBar.style.width = '5%';
         progressText.textContent = '5%';
+        currentProgress = 5;
+
+        function animateProgress(target) {
+            target = Math.max(0, Math.min(100, target));
+            const start = currentProgress;
+            const delta = target - start;
+            const duration = 400;
+            const startTime = performance.now();
+            function step(now) {
+                const t = Math.min(1, (now - startTime) / duration);
+                const value = start + delta * t;
+                currentProgress = value;
+                progressBar.style.width = value.toFixed(1) + '%';
+                progressText.textContent = Math.round(value) + '%';
+                if (t < 1) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        }
+
+        function renderHistory() {
+            loadingHistory.innerHTML = statusHistory.map(entry => {
+                const time = entry.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                return `<div class="history-row"><div class="d-flex align-items-center"><span class="history-dot"></span><span>${time} · ${entry.message}</span></div><span>${Math.round(entry.progress)}%</span></div>`;
+            }).join('');
+        }
+
+        function recordStatus(status, message, progress) {
+            statusHistory.unshift({ status, message: message || status, progress, time: new Date() });
+            statusHistory = statusHistory.slice(0, 6);
+            renderHistory();
+        }
         
         function checkMLStatus() {
             fetch('/ml-status')
@@ -616,21 +705,27 @@
                 .then(data => {
                     const { status, message, progress } = data;
                     hasCheckedOnce = true;
+                    currentStatus = status;
+
+                    // record every new snapshot so the user sees live steps
+                    const snapshotKey = `${status}|${message}|${Math.round(progress)}`;
+                    if (snapshotKey !== lastSnapshot) {
+                        recordStatus(status, message, progress || 0);
+                        lastSnapshot = snapshotKey;
+                    }
                     
                     // Update progress bar
-                    progressBar.style.width = progress + '%';
-                    progressText.textContent = progress + '%';
+                    animateProgress(progress || 0);
                     loadingMessage.textContent = message || 'Checking status...';
                     
                     if (status === 'not_started') {
                         loadingOverlay.classList.add('active');
                         loadingMessage.textContent = 'Preparing to load ML models...';
                         loadingTip.innerHTML = '<i class="fas fa-info-circle me-2"></i>ML models will be installed when you first use text comparison.';
-                        progressBar.style.width = '10%';
-                        progressText.textContent = '10%';
+                        animateProgress(10);
                         // Hide after 3 seconds if still not started
                         setTimeout(() => {
-                            if (ml_loading_status === 'not_started') {
+                            if (currentStatus === 'not_started') {
                                 loadingOverlay.classList.remove('active');
                             }
                         }, 3000);
@@ -668,6 +763,17 @@
         
         // Check status on page load
         checkMLStatus();
+
+        // Initialize inference mode
+        fetch('/get-text-inference-mode')
+            .then(r => r.json())
+            .then(({ mode }) => {
+                inferenceModeSelect.value = mode;
+                if (mode === 'api') {
+                    loadingOverlay.classList.remove('active');
+                    loadingMessage.textContent = 'Using Hugging Face Inference API';
+                }
+            }).catch(() => {});
         
         // Check status every 2 seconds
         statusCheckInterval = setInterval(checkMLStatus, 2000);
@@ -724,13 +830,33 @@
                     // Show loading panel and kick off warm-up
                     loadingOverlay.classList.add('active');
                     loadingMessage.textContent = 'Preparing text analysis...';
-                    progressBar.style.width = '10%';
-                    progressText.textContent = '10%';
+                    animateProgress(10);
                     try {
                         fetch('/warm-text-model', { method: 'POST' });
                     } catch (e) { /* ignore */ }
                 }
             });
+        });
+
+        // Change text inference mode
+        inferenceModeSelect.addEventListener('change', () => {
+            const mode = inferenceModeSelect.value;
+            fetch('/set-text-inference-mode', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode })
+            }).then(r => r.json()).then(res => {
+                if (res.ok && res.mode === 'api') {
+                    loadingOverlay.classList.remove('active');
+                    loadingMessage.textContent = 'Using Hugging Face Inference API';
+                    recordStatus('api', 'Switched to Hugging Face Inference API', currentProgress);
+                } else if (res.ok && res.mode === 'local') {
+                    loadingOverlay.classList.add('active');
+                    loadingMessage.textContent = 'Local model will load on first use';
+                    animateProgress(5);
+                    recordStatus('local', 'Switched to local on-demand mode', currentProgress);
+                }
+            }).catch(() => {});
         });
         
         // Form submission handler - show loading panel during comparison
@@ -739,8 +865,7 @@
             // Show loading panel during comparison (non-blocking)
             loadingMessage.textContent = 'Analyzing similarity...';
             loadingTip.innerHTML = '<i class="fas fa-cog fa-spin me-2"></i>Processing your comparison request...';
-            progressBar.style.width = '75%';
-            progressText.textContent = '75%';
+            animateProgress(75);
             loadingOverlay.classList.add('active');
         });
     </script>

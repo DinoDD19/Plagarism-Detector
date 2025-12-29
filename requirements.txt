@@ -1,5 +1,6 @@
 --prefer-binary
 Flask==2.3.2
+Werkzeug==3.0.3
 imagehash==4.3.1
 Pillow==10.4.0
 requests==2.31.0
