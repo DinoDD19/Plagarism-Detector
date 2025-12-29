@@ -1,1 +1,1 @@
-web: gunicorn -w 1 -k gthread --threads 4 -t 120 --timeout 120 app:app
+web: gunicorn -w 1 -k gthread --threads 4 -t 180 --timeout 180 app:app
