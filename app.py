@@ -19,9 +19,16 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 # Lazy-load ML packages - install on first use to keep build fast
 embedder = None
 ml_packages_installed = False
+ml_loading_status = {'status': 'not_started', 'message': '', 'progress': 0}
 MODEL_NAME = os.getenv('SENTENCE_MODEL', 'all-MiniLM-L6-v2')
 HF_CACHE_DIR = os.getenv('HF_HOME', os.path.join('/opt/render/project', '.cache', 'huggingface'))
 os.makedirs(HF_CACHE_DIR, exist_ok=True)
+
+def update_loading_status(status, message, progress):
+    """Update global loading status"""
+    global ml_loading_status
+    ml_loading_status = {'status': status, 'message': message, 'progress': progress}
+    print(f"[ML Loading] {message} ({progress}%)")
 
 def install_ml_packages():
     """Install heavy ML packages on first use, not during build"""
@@ -32,12 +39,13 @@ def install_ml_packages():
     try:
         import subprocess
         import sys
-        print("Installing ML packages on first use...")
+        update_loading_status('installing', 'Installing ML packages...', 10)
         subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-q', 'sentence-transformers>=2.2.0', 'numpy>=1.24.0'])
         ml_packages_installed = True
-        print("ML packages installed successfully!")
+        update_loading_status('packages_installed', 'ML packages installed successfully!', 50)
         return True
     except Exception as e:
+        update_loading_status('error', f'Failed to install ML packages: {e}', 0)
         print(f"Failed to install ML packages: {e}")
         return False
 
@@ -49,9 +57,12 @@ def get_embedder():
             return None
         
         try:
+            update_loading_status('loading_model', 'Downloading ML model (one-time setup)...', 60)
             from sentence_transformers import SentenceTransformer
             embedder = SentenceTransformer(MODEL_NAME, cache_folder=HF_CACHE_DIR)
+            update_loading_status('ready', 'ML model ready!', 100)
         except Exception as e:
+            update_loading_status('error', f'Failed to load model: {e}', 0)
             print(f"Failed to load model: {e}")
             return None
     return embedder
@@ -255,6 +266,12 @@ def image_similarity(path1: str, path2: str) -> float:
         dist = h1 - h2
         sims.append(1 - (dist / 64))
     return float(sum(sims) / len(sims))
+
+@app.route('/ml-status', methods=['GET'])
+def ml_status():
+    """Endpoint to check ML loading status"""
+    from flask import jsonify
+    return jsonify(ml_loading_status)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():

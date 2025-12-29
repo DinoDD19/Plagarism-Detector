@@ -222,6 +222,81 @@
             to { opacity: 1; transform: translateY(0); }
         }
         
+        /* Loading Bar Styles */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        
+        .loading-overlay.active {
+            display: flex;
+        }
+        
+        .loading-container {
+            background: var(--bg-card);
+            padding: 40px 50px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+        }
+        
+        .loading-spinner {
+            font-size: 3rem;
+            animation: spin 1s linear infinite;
+            color: var(--tab-active);
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .progress-bar-container {
+            background: var(--instructions-bg);
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+            border: 2px solid var(--border-color);
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: var(--bg-primary);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .loading-message {
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-top: 16px;
+        }
+        
+        .loading-tip {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 12px;
+        }
+        
         .result-card {
             margin-top: 30px;
             padding: 30px;
@@ -275,6 +350,25 @@
     </style>
 </head>
 <body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-container">
+            <div class="loading-spinner">
+                <i class="fas fa-spinner"></i>
+            </div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar" style="width: 0%;">
+                    <span id="progressText">0%</span>
+                </div>
+            </div>
+            <div class="loading-message" id="loadingMessage">Initializing...</div>
+            <div class="loading-tip">
+                <i class="fas fa-info-circle me-2"></i>
+                <span id="loadingTip">This is a one-time setup. ML models are being downloaded and installed.</span>
+            </div>
+        </div>
+    </div>
+    
     <nav class="navbar navbar-expand-lg navbar-dark shadow-lg">
         <div class="container-fluid">
             <span class="navbar-brand mb-0 h1 mx-auto">
@@ -477,6 +571,57 @@
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // ML Loading Status Checker
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const loadingTip = document.getElementById('loadingTip');
+        let statusCheckInterval;
+        
+        function checkMLStatus() {
+            fetch('/ml-status')
+                .then(response => response.json())
+                .then(data => {
+                    const { status, message, progress } = data;
+                    
+                    // Update progress bar
+                    progressBar.style.width = progress + '%';
+                    progressText.textContent = progress + '%';
+                    loadingMessage.textContent = message;
+                    
+                    if (status === 'not_started') {
+                        loadingTip.innerHTML = '<i class="fas fa-info-circle me-2"></i>Checking ML model status...';
+                    } else if (status === 'installing') {
+                        loadingOverlay.classList.add('active');
+                        loadingTip.innerHTML = '<i class="fas fa-download me-2"></i>Installing required packages... This may take 30-60 seconds.';
+                    } else if (status === 'loading_model') {
+                        loadingOverlay.classList.add('active');
+                        loadingTip.innerHTML = '<i class="fas fa-cloud-download-alt me-2"></i>Downloading ML model (one-time setup, ~400MB)...';
+                    } else if (status === 'ready') {
+                        loadingOverlay.classList.remove('active');
+                        clearInterval(statusCheckInterval);
+                        loadingTip.innerHTML = '<i class="fas fa-check-circle me-2"></i>ML model ready! You can now use all features.';
+                    } else if (status === 'error') {
+                        loadingOverlay.classList.remove('active');
+                        clearInterval(statusCheckInterval);
+                        alert('ML model loading failed. The app will use basic similarity detection.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking ML status:', error);
+                });
+        }
+        
+        // Check status on page load
+        checkMLStatus();
+        
+        // Check status every 2 seconds
+        statusCheckInterval = setInterval(checkMLStatus, 2000);
+        
+        // Stop checking after 5 minutes (timeout)
+        setTimeout(() => clearInterval(statusCheckInterval), 300000);
+        
         // Theme Switcher
         const html = document.documentElement;
         const themeButtons = document.querySelectorAll('.theme-btn');
@@ -521,6 +666,17 @@
                 // Update hidden input
                 plagiarismTypeInput.value = targetTab;
             });
+        });
+        
+        // Form submission handler - show loading during comparison
+        const mainForm = document.getElementById('mainForm');
+        mainForm.addEventListener('submit', (e) => {
+            // Show loading overlay during comparison
+            loadingMessage.textContent = 'Analyzing similarity...';
+            loadingTip.innerHTML = '<i class="fas fa-cog fa-spin me-2"></i>Processing your comparison request...';
+            progressBar.style.width = '75%';
+            progressText.textContent = '75%';
+            loadingOverlay.classList.add('active');
         });
     </script>
 </body>
