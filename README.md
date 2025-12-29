@@ -44,15 +44,19 @@ A Flask-based web application that detects plagiarism in text, code, and images.
 4. Select your repository
 5. Railway will automatically detect and deploy your Flask app
 
-### Deploy to Heroku (auto from GitHub)
+### Deploy to Railway (Recommended - Easiest)
 
-1. Create a Heroku account at [heroku.com](https://heroku.com) and create an app (note the app name)
-2. In GitHub repo settings, add Action secrets:
-   - `HEROKU_API_KEY`: from Heroku Account → Account settings → API Key
-   - `HEROKU_APP_NAME`: your Heroku app name
-   - `HEROKU_EMAIL`: your Heroku account email
-3. Push to `main` — the workflow at [.github/workflows/heroku-deploy.yml](.github/workflows/heroku-deploy.yml) will deploy automatically
-4. Heroku uses `Procfile` and `runtime.txt` already in the repo
+1. Go to [Railway](https://railway.app/) and sign up with GitHub
+2. Click **"New Project"** → **"Deploy from GitHub repo"**
+3. Select `DinoDD19/Plagarism-Detector`
+4. Railway auto-detects Python and uses `Procfile` & `runtime.txt` automatically
+5. Set **Environment Variables** in Railway dashboard:
+   - `GOOGLE_API_KEY`: Your Google Custom Search API key (optional; text/code work without)
+   - `GOOGLE_CSE_ID`: Your Google Custom Search Engine ID (optional)
+6. Click **"Deploy"**
+7. App will auto-deploy on every push to `main` (native GitHub integration)
+
+That's it — no secrets, no workflows needed!
 
 ## Local Installation
 
