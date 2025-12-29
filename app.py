@@ -2,10 +2,7 @@ from flask import Flask, render_template, request
 from PIL import Image
 import imagehash
 import os
-try:
-    import numpy as np
-except Exception:
-    np = None
+import numpy as np
 import threading
 import difflib
 import requests
@@ -42,23 +39,11 @@ def semantic_similarity(text1, text2):
     try:
         model = get_embedder()
         embeddings = model.encode([text1, text2])
-        v1_raw, v2_raw = embeddings[0], embeddings[1]
-        if np is not None:
-            v1, v2 = np.array(v1_raw), np.array(v2_raw)
-            denom = (np.linalg.norm(v1) * np.linalg.norm(v2))
-            if denom == 0:
-                return 0.0
-            return float(np.dot(v1, v2) / denom)
-        else:
-            # Pure-Python cosine if NumPy is unavailable
-            v1 = list(v1_raw) if hasattr(v1_raw, '__iter__') else [float(v1_raw)]
-            v2 = list(v2_raw) if hasattr(v2_raw, '__iter__') else [float(v2_raw)]
-            from math import sqrt
-            dot = sum(a*b for a, b in zip(v1, v2))
-            n1 = sqrt(sum(a*a for a in v1))
-            n2 = sqrt(sum(b*b for b in v2))
-            denom = n1 * n2
-            return float(dot/denom) if denom else 0.0
+        v1, v2 = np.array(embeddings[0]), np.array(embeddings[1])
+        denom = (np.linalg.norm(v1) * np.linalg.norm(v2))
+        if denom == 0:
+            return 0.0
+        return float(np.dot(v1, v2) / denom)
     except Exception:
         # If the model isn't ready or any error occurs, use quick fallback
         return quick_similarity(text1, text2)
@@ -154,7 +139,6 @@ def index():
     return render_template('index.html', result=result)
 
 if __name__ == '__main__':
-    # Prewarm model in background to reduce first-request latency
-    threading.Thread(target=get_embedder, daemon=True).start()
+    # Don't preload model; let it lazy-load on first request to avoid startup timeout
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
