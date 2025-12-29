@@ -3,7 +3,6 @@ from PIL import Image
 import imagehash
 import os
 from sklearn.metrics.pairwise import cosine_similarity
-from sentence_transformers import SentenceTransformer
 import requests
 
 app = Flask(__name__, template_folder='plagirism/templates', static_folder='plagirism')
@@ -16,11 +15,20 @@ GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID', '')
 # Ensure upload folder exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Load the sentence transformer model once
-embedder = SentenceTransformer('all-MiniLM-L6-v2')
+# Lazy-load the sentence transformer model to speed up boot
+embedder = None
+MODEL_NAME = os.getenv('SENTENCE_MODEL', 'all-MiniLM-L6-v2')
+
+def get_embedder():
+    global embedder
+    if embedder is None:
+        from sentence_transformers import SentenceTransformer
+        embedder = SentenceTransformer(MODEL_NAME)
+    return embedder
 
 def semantic_similarity(text1, text2):
-    embeddings = embedder.encode([text1, text2])
+    model = get_embedder()
+    embeddings = model.encode([text1, text2])
     sim = cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]
     return sim
 
