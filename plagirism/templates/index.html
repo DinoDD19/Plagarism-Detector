@@ -578,30 +578,56 @@
         const loadingMessage = document.getElementById('loadingMessage');
         const loadingTip = document.getElementById('loadingTip');
         let statusCheckInterval;
+        let hasCheckedOnce = false;
+        
+        // Show loading on initial page load
+        loadingOverlay.classList.add('active');
+        loadingMessage.textContent = 'Checking ML model status...';
+        progressBar.style.width = '5%';
+        progressText.textContent = '5%';
         
         function checkMLStatus() {
             fetch('/ml-status')
                 .then(response => response.json())
                 .then(data => {
                     const { status, message, progress } = data;
+                    hasCheckedOnce = true;
                     
                     // Update progress bar
                     progressBar.style.width = progress + '%';
                     progressText.textContent = progress + '%';
-                    loadingMessage.textContent = message;
+                    loadingMessage.textContent = message || 'Checking status...';
                     
                     if (status === 'not_started') {
-                        loadingTip.innerHTML = '<i class="fas fa-info-circle me-2"></i>Checking ML model status...';
+                        loadingOverlay.classList.add('active');
+                        loadingMessage.textContent = 'Preparing to load ML models...';
+                        loadingTip.innerHTML = '<i class="fas fa-info-circle me-2"></i>ML models will be installed when you first use text comparison.';
+                        progressBar.style.width = '10%';
+                        progressText.textContent = '10%';
+                        // Hide after 3 seconds if still not started
+                        setTimeout(() => {
+                            if (ml_loading_status === 'not_started') {
+                                loadingOverlay.classList.remove('active');
+                            }
+                        }, 3000);
                     } else if (status === 'installing') {
                         loadingOverlay.classList.add('active');
                         loadingTip.innerHTML = '<i class="fas fa-download me-2"></i>Installing required packages... This may take 30-60 seconds.';
+                    } else if (status === 'packages_installed') {
+                        loadingOverlay.classList.add('active');
+                        loadingTip.innerHTML = '<i class="fas fa-box-open me-2"></i>Packages installed! Preparing to download model...';
                     } else if (status === 'loading_model') {
                         loadingOverlay.classList.add('active');
                         loadingTip.innerHTML = '<i class="fas fa-cloud-download-alt me-2"></i>Downloading ML model (one-time setup, ~400MB)...';
                     } else if (status === 'ready') {
-                        loadingOverlay.classList.remove('active');
+                        loadingMessage.textContent = 'ML model ready!';
+                        progressBar.style.width = '100%';
+                        progressText.textContent = '100%';
+                        loadingTip.innerHTML = '<i class="fas fa-check-circle me-2"></i>All features are now available!';
+                        setTimeout(() => {
+                            loadingOverlay.classList.remove('active');
+                        }, 1500);
                         clearInterval(statusCheckInterval);
-                        loadingTip.innerHTML = '<i class="fas fa-check-circle me-2"></i>ML model ready! You can now use all features.';
                     } else if (status === 'error') {
                         loadingOverlay.classList.remove('active');
                         clearInterval(statusCheckInterval);
@@ -610,6 +636,9 @@
                 })
                 .catch(error => {
                     console.error('Error checking ML status:', error);
+                    if (hasCheckedOnce) {
+                        loadingOverlay.classList.remove('active');
+                    }
                 });
         }
         
