@@ -2,8 +2,7 @@
 Flask==2.3.2
 imagehash==4.3.1
 Pillow==10.4.0
-numpy==1.26.4
-sentence-transformers>=2.2.0
+numpy==1.24.4
+sentence-transformers==2.2.2
 requests==2.31.0
 gunicorn==21.2.0
-torch>=2.0.0
