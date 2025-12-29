@@ -3,6 +3,8 @@ from PIL import Image
 import imagehash
 import os
 import numpy as np
+import threading
+import difflib
 import requests
 
 app = Flask(__name__, template_folder='plagirism/templates', static_folder='plagirism')
@@ -18,22 +20,33 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 # Lazy-load the sentence transformer model to speed up boot
 embedder = None
 MODEL_NAME = os.getenv('SENTENCE_MODEL', 'all-MiniLM-L6-v2')
+# Persist HF cache across deploys (Render persistent dir)
+HF_CACHE_DIR = os.getenv('HF_HOME', os.path.join('/opt/render/project', '.cache', 'huggingface'))
+os.makedirs(HF_CACHE_DIR, exist_ok=True)
 
 def get_embedder():
     global embedder
     if embedder is None:
         from sentence_transformers import SentenceTransformer
-        embedder = SentenceTransformer(MODEL_NAME)
+        embedder = SentenceTransformer(MODEL_NAME, cache_folder=HF_CACHE_DIR)
     return embedder
 
+def quick_similarity(text1, text2):
+    # Fast lexical similarity as a fallback while the model warms up
+    return float(difflib.SequenceMatcher(None, text1, text2).ratio())
+
 def semantic_similarity(text1, text2):
-    model = get_embedder()
-    embeddings = model.encode([text1, text2])
-    v1, v2 = np.array(embeddings[0]), np.array(embeddings[1])
-    denom = (np.linalg.norm(v1) * np.linalg.norm(v2))
-    if denom == 0:
-        return 0.0
-    return float(np.dot(v1, v2) / denom)
+    try:
+        model = get_embedder()
+        embeddings = model.encode([text1, text2])
+        v1, v2 = np.array(embeddings[0]), np.array(embeddings[1])
+        denom = (np.linalg.norm(v1) * np.linalg.norm(v2))
+        if denom == 0:
+            return 0.0
+        return float(np.dot(v1, v2) / denom)
+    except Exception:
+        # If the model isn't ready or any error occurs, use quick fallback
+        return quick_similarity(text1, text2)
 
 def search_google_snippets(query, num_results=5):
     # If API creds are not configured, skip online search gracefully
@@ -126,5 +139,7 @@ def index():
     return render_template('index.html', result=result)
 
 if __name__ == '__main__':
+    # Prewarm model in background to reduce first-request latency
+    threading.Thread(target=get_embedder, daemon=True).start()
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False) 
+    app.run(host='0.0.0.0', port=port, debug=False)
