@@ -114,7 +114,7 @@ Optional:
 - Flask 2.3.2
 - Pillow 10.4.0
 - imagehash 4.3.1
-- scikit-learn 1.3.2
+- numpy 1.26.4
 - sentence-transformers 2.2.2
 - requests 2.31.0
 - gunicorn 21.2.0 (for deployment)

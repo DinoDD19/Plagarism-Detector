@@ -2,7 +2,7 @@ from flask import Flask, render_template, request
 from PIL import Image
 import imagehash
 import os
-from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 import requests
 
 app = Flask(__name__, template_folder='plagirism/templates', static_folder='plagirism')
@@ -29,8 +29,11 @@ def get_embedder():
 def semantic_similarity(text1, text2):
     model = get_embedder()
     embeddings = model.encode([text1, text2])
-    sim = cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]
-    return sim
+    v1, v2 = np.array(embeddings[0]), np.array(embeddings[1])
+    denom = (np.linalg.norm(v1) * np.linalg.norm(v2))
+    if denom == 0:
+        return 0.0
+    return float(np.dot(v1, v2) / denom)
 
 def search_google_snippets(query, num_results=5):
     # If API creds are not configured, skip online search gracefully
