@@ -12,6 +12,9 @@ app.config['UPLOAD_FOLDER'] = 'plagirism/uploads'
 # Google Custom Search API credentials (use environment variables in production)
 GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY', '')
 GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID', '')
+# Hugging Face Inference API (optional)
+HF_API_TOKEN = os.getenv('HF_API_TOKEN', '')
+HF_MODEL_ID = os.getenv('HF_MODEL_ID', 'sentence-transformers/all-MiniLM-L6-v2')
 
 # Ensure upload folder exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -50,6 +53,10 @@ def install_ml_packages():
 def get_embedder():
     global embedder
     if embedder is None:
+        # If using HF API, no local model needed
+        if HF_API_TOKEN:
+            update_loading_status('ready', 'Using Hugging Face Inference API', 100)
+            return None
         # Ensure required packages are present
         if not install_ml_packages():
             return None
@@ -69,6 +76,28 @@ def quick_similarity(text1, text2):
 
 def semantic_similarity(text1, text2):
     try:
+        # Prefer Hugging Face Inference API if token provided (no local downloads)
+        if HF_API_TOKEN:
+            try:
+                api_url = f"https://api-inference.huggingface.co/models/{HF_MODEL_ID}"
+                headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
+                payload = {"inputs": {"source_sentence": text1, "sentences": [text2]}}
+                resp = requests.post(api_url, headers=headers, json=payload, timeout=30)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    # API returns list of similarity scores
+                    return float(data[0]) if isinstance(data, list) and data else quick_similarity(text1, text2)
+                elif resp.status_code in (503, 524):
+                    # Model warming on HF; show intermediate status and fallback for now
+                    update_loading_status('loading_model', 'Warming Hugging Face model...', 60)
+                    return quick_similarity(text1, text2)
+                else:
+                    # Any error: fallback
+                    return quick_similarity(text1, text2)
+            except Exception:
+                return quick_similarity(text1, text2)
+        
+        # Local model path
         model = get_embedder()
         if model is None:
             # Fallback to quick similarity if ML not available
@@ -109,6 +138,11 @@ def search_google_snippets(query, num_results=5):
 # Endpoint to proactively warm text model when user chooses Text mode
 @app.route('/warm-text-model', methods=['POST'])
 def warm_text_model():
+    # If using HF API, mark ready immediately (no local downloads)
+    if HF_API_TOKEN:
+        update_loading_status('ready', 'Using Hugging Face Inference API', 100)
+        return {'status': 'api_ready'}
+    # Else load locally in background
     def _bg_load():
         try:
             _ = get_embedder()
