@@ -9,9 +9,9 @@ import requests
 app = Flask(__name__, template_folder='plagirism/templates', static_folder='plagirism')
 app.config['UPLOAD_FOLDER'] = 'plagirism/uploads'
 
-# Google Custom Search API credentials
-GOOGLE_API_KEY = 'AIzaSyA3x44KtcD1wnQrVZ6wgrv5mei_TVX3hVI'
-GOOGLE_CSE_ID = 'f320073fbf8424752'
+# Google Custom Search API credentials (use environment variables in production)
+GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY', '')
+GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID', '')
 
 # Ensure upload folder exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -25,6 +25,9 @@ def semantic_similarity(text1, text2):
     return sim
 
 def search_google_snippets(query, num_results=5):
+    # If API creds are not configured, skip online search gracefully
+    if not GOOGLE_API_KEY or not GOOGLE_CSE_ID:
+        return []
     url = 'https://www.googleapis.com/customsearch/v1'
     params = {
         'key': GOOGLE_API_KEY,
