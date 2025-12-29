@@ -2,7 +2,6 @@ from flask import Flask, render_template, request
 from PIL import Image
 import imagehash
 import os
-import numpy as np
 import threading
 import difflib
 import requests
@@ -17,34 +16,66 @@ GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID', '')
 # Ensure upload folder exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Lazy-load the sentence transformer model to speed up boot
+# Lazy-load ML packages - install on first use to keep build fast
 embedder = None
+ml_packages_installed = False
 MODEL_NAME = os.getenv('SENTENCE_MODEL', 'all-MiniLM-L6-v2')
-# Persist HF cache across deploys (Render persistent dir)
 HF_CACHE_DIR = os.getenv('HF_HOME', os.path.join('/opt/render/project', '.cache', 'huggingface'))
 os.makedirs(HF_CACHE_DIR, exist_ok=True)
+
+def install_ml_packages():
+    """Install heavy ML packages on first use, not during build"""
+    global ml_packages_installed
+    if ml_packages_installed:
+        return True
+    
+    try:
+        import subprocess
+        import sys
+        print("Installing ML packages on first use...")
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-q', 'sentence-transformers>=2.2.0', 'numpy>=1.24.0'])
+        ml_packages_installed = True
+        print("ML packages installed successfully!")
+        return True
+    except Exception as e:
+        print(f"Failed to install ML packages: {e}")
+        return False
 
 def get_embedder():
     global embedder
     if embedder is None:
-        from sentence_transformers import SentenceTransformer
-        embedder = SentenceTransformer(MODEL_NAME, cache_folder=HF_CACHE_DIR)
+        # Install packages first if needed
+        if not install_ml_packages():
+            return None
+        
+        try:
+            from sentence_transformers import SentenceTransformer
+            embedder = SentenceTransformer(MODEL_NAME, cache_folder=HF_CACHE_DIR)
+        except Exception as e:
+            print(f"Failed to load model: {e}")
+            return None
     return embedder
 
 def quick_similarity(text1, text2):
-    # Fast lexical similarity as a fallback while the model warms up
+    # Fast lexical similarity as a fallback
     return float(difflib.SequenceMatcher(None, text1, text2).ratio())
 
 def semantic_similarity(text1, text2):
     try:
         model = get_embedder()
+        if model is None:
+            # Fallback to quick similarity if ML not available
+            return quick_similarity(text1, text2)
+        
+        import numpy as np
         embeddings = model.encode([text1, text2])
         v1, v2 = np.array(embeddings[0]), np.array(embeddings[1])
         denom = (np.linalg.norm(v1) * np.linalg.norm(v2))
         if denom == 0:
             return 0.0
         return float(np.dot(v1, v2) / denom)
-    except Exception:
+    except Exception as e:
+        print(f"Semantic similarity error: {e}")
         # If the model isn't ready or any error occurs, use quick fallback
         return quick_similarity(text1, text2)
 
