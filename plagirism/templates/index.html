@@ -1,156 +1,527 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <title>Multi-Modal Plagiarism Detector</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        :root[data-theme="light"] {
+            --bg-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --bg-body: #f7fafc;
+            --bg-card: #ffffff;
+            --text-primary: #2d3748;
+            --text-secondary: #718096;
+            --border-color: #e2e8f0;
+            --shadow: 0 10px 30px rgba(0,0,0,0.1);
+            --instructions-bg: #edf2f7;
+            --tab-inactive: #e2e8f0;
+            --tab-active: #667eea;
+        }
+        
+        :root[data-theme="dark"] {
+            --bg-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --bg-body: #1a202c;
+            --bg-card: #2d3748;
+            --text-primary: #f7fafc;
+            --text-secondary: #a0aec0;
+            --border-color: #4a5568;
+            --shadow: 0 10px 30px rgba(0,0,0,0.3);
+            --instructions-bg: #2d3748;
+            --tab-inactive: #4a5568;
+            --tab-active: #805ad5;
+        }
+        
+        :root[data-theme="ocean"] {
+            --bg-primary: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
+            --bg-body: #f0f9ff;
+            --bg-card: #ffffff;
+            --text-primary: #0c4a6e;
+            --text-secondary: #0369a1;
+            --border-color: #bae6fd;
+            --shadow: 0 10px 30px rgba(14, 165, 233, 0.2);
+            --instructions-bg: #e0f2fe;
+            --tab-inactive: #bae6fd;
+            --tab-active: #0ea5e9;
+        }
+        
+        :root[data-theme="sunset"] {
+            --bg-primary: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+            --bg-body: #fff7ed;
+            --bg-card: #ffffff;
+            --text-primary: #7c2d12;
+            --text-secondary: #ea580c;
+            --border-color: #fed7aa;
+            --shadow: 0 10px 30px rgba(251, 146, 60, 0.2);
+            --instructions-bg: #ffedd5;
+            --tab-inactive: #fed7aa;
+            --tab-active: #f59e0b;
+        }
+        
+        * {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+        
         body {
-            background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+            background: var(--bg-body);
+            color: var(--text-primary);
             min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
+        
+        .navbar {
+            background: var(--bg-primary) !important;
+            box-shadow: var(--shadow);
+        }
+        
+        .theme-switcher {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 1000;
+            background: var(--bg-card);
+            border-radius: 50px;
+            padding: 8px 12px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+        
+        .theme-btn {
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 8px 12px;
+            border-radius: 50%;
+            transition: all 0.2s;
+            color: var(--text-secondary);
+        }
+        
+        .theme-btn:hover {
+            background: var(--tab-inactive);
+            transform: scale(1.1);
+        }
+        
+        .theme-btn.active {
+            color: var(--tab-active);
+            background: var(--tab-inactive);
+        }
+        
         .container {
-            max-width: 600px;
+            max-width: 900px;
             margin-top: 60px;
+            padding-bottom: 60px;
         }
+        
         .card {
-            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow);
+            border-radius: 16px;
         }
-        .form-label {
-            font-weight: 500;
-        }
-        .result-icon {
-            font-size: 2.5rem;
-        }
+        
         .instructions {
-            background: #e0e7ff;
-            border-radius: 8px;
-            padding: 18px 20px;
-            margin-bottom: 24px;
+            background: var(--instructions-bg);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+            border: 1px solid var(--border-color);
         }
-        .step {
+        
+        .instructions h4 {
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+        
+        .instructions p, .instructions ol {
+            color: var(--text-secondary);
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: var(--text-primary);
             margin-bottom: 8px;
         }
-        .type-select {
-            margin-bottom: 1.5rem;
+        
+        .form-control, .form-select {
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 12px;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            background: var(--bg-card);
+            border-color: var(--tab-active);
+            color: var(--text-primary);
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+        }
+        
+        .btn-primary {
+            background: var(--bg-primary);
+            border: none;
+            padding: 14px 32px;
+            font-weight: 600;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            box-shadow: var(--shadow);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }
+        
+        .tabs-container {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            border-bottom: 2px solid var(--border-color);
+        }
+        
+        .tab-btn {
+            flex: 1;
+            padding: 14px 24px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+            transition: all 0.3s;
+            font-size: 1rem;
+        }
+        
+        .tab-btn:hover {
+            background: var(--tab-inactive);
+        }
+        
+        .tab-btn.active {
+            color: var(--tab-active);
+            background: var(--tab-inactive);
+            border-bottom: 3px solid var(--tab-active);
+        }
+        
+        .tab-btn i {
+            margin-right: 8px;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.4s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .result-card {
+            margin-top: 30px;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .result-icon {
+            font-size: 3.5rem;
+            margin-bottom: 16px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+        }
+        
+        .stat-card {
+            background: var(--instructions-bg);
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .stat-value {
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+        
+        footer {
+            color: var(--text-secondary);
+            padding: 24px;
+        }
+        
+        .badge-custom {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.85rem;
         }
     </style>
-    <script>
-        function showForm() {
-            var type = document.getElementById('plagiarismType').value;
-            document.getElementById('imageForm').style.display = (type === 'image') ? 'block' : 'none';
-            document.getElementById('textForm').style.display = (type === 'text') ? 'block' : 'none';
-            document.getElementById('codeForm').style.display = (type === 'code') ? 'block' : 'none';
-        }
-        window.onload = showForm;
-    </script>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow">
+    <nav class="navbar navbar-expand-lg navbar-dark shadow-lg">
         <div class="container-fluid">
-            <span class="navbar-brand mb-0 h1 mx-auto">Multi-Modal Plagiarism Detector</span>
+            <span class="navbar-brand mb-0 h1 mx-auto">
+                <i class="fas fa-shield-alt me-2"></i>
+                Multi-Modal Plagiarism Detector
+            </span>
         </div>
     </nav>
+    
+    <!-- Theme Switcher -->
+    <div class="theme-switcher">
+        <button class="theme-btn active" data-theme="light" title="Light Theme">
+            <i class="fas fa-sun"></i>
+        </button>
+        <button class="theme-btn" data-theme="dark" title="Dark Theme">
+            <i class="fas fa-moon"></i>
+        </button>
+        <button class="theme-btn" data-theme="ocean" title="Ocean Theme">
+            <i class="fas fa-water"></i>
+        </button>
+        <button class="theme-btn" data-theme="sunset" title="Sunset Theme">
+            <i class="fas fa-fire"></i>
+        </button>
+    </div>
+    
     <div class="container">
         <div class="instructions mt-4">
-            <h4 class="mb-2">What does this tool do?</h4>
-            <p>This web app helps you detect potential plagiarism or copying between two <b>images</b>, <b>text documents</b>, or <b>code snippets</b>. It uses advanced algorithms to compare the similarity between your inputs, even if they have been slightly edited.</p>
-            <h5 class="mt-3 mb-2">How to use:</h5>
+            <h4><i class="fas fa-info-circle me-2"></i>What does this tool do?</h4>
+            <p>This web app helps you detect potential plagiarism or copying between two <b>images</b>, <b>text documents</b>, or <b>code snippets</b>. It uses advanced ML algorithms to compare similarity, even with slight edits.</p>
+            <h5 class="mt-3 mb-2"><i class="fas fa-clipboard-list me-2"></i>How to use:</h5>
             <ol class="mb-0">
-                <li class="step">Select the type of content you want to check: <b>Image</b>, <b>Text</b>, or <b>Code</b>.</li>
-                <li class="step">Provide the two items to compare (upload images, paste text/code, or upload files).</li>
-                <li class="step">Press <b>Compare</b> to analyze the similarity.</li>
-                <li class="step">View the result below to see if potential plagiarism is detected.</li>
+                <li class="step">Select the type of content: <b>Image</b>, <b>Text</b>, or <b>Code</b>.</li>
+                <li class="step">Provide two items to compare (upload or paste).</li>
+                <li class="step">Click <b>Compare</b> to analyze similarity.</li>
+                <li class="step">View detailed results and detection reasoning.</li>
             </ol>
-            <div class="mt-2 text-muted" style="font-size: 0.97em;">
-                <span>&#9432;</span> Your data is processed locally and not stored.
+            <div class="mt-3 d-flex align-items-center">
+                <i class="fas fa-lock me-2" style="color: var(--tab-active);"></i>
+                <small>Your data is processed securely and not stored.</small>
             </div>
         </div>
-        <div class="card p-4 mt-2">
-            <h3 class="mb-3 text-center">Compare for Plagiarism</h3>
-            <form method="post" enctype="multipart/form-data">
-                <div class="type-select">
-                    <label for="plagiarismType" class="form-label">Select Type:</label>
-                    <select class="form-select" id="plagiarismType" name="plagiarismType" onchange="showForm()">
-                        <option value="image">Image</option>
-                        <option value="text">Text</option>
-                        <option value="code">Code</option>
-                    </select>
-                </div>
-                <!-- Image Form -->
-                <div id="imageForm">
+        
+        <div class="card p-4">
+            <h3 class="mb-4 text-center"><i class="fas fa-search me-2"></i>Compare for Plagiarism</h3>
+            
+            <!-- Tab Navigation -->
+            <div class="tabs-container">
+                <button class="tab-btn active" data-tab="image">
+                    <i class="fas fa-image"></i> Image
+                </button>
+                <button class="tab-btn" data-tab="text">
+                    <i class="fas fa-file-alt"></i> Text
+                </button>
+                <button class="tab-btn" data-tab="code">
+                    <i class="fas fa-code"></i> Code
+                </button>
+            </div>
+            
+            <form method="post" enctype="multipart/form-data" id="mainForm">
+                <input type="hidden" name="plagiarismType" id="plagiarismType" value="image">
+                
+                <!-- Image Tab -->
+                <div class="tab-content active" id="imageForm">
                     <div class="mb-3">
-                        <label class="form-label" for="image1">Upload Image 1</label>
-                        <input type="file" class="form-control" id="image1" name="image1" accept="image/*" title="Select the first image to check for plagiarism.">
+                        <label class="form-label" for="image1">
+                            <i class="fas fa-upload me-2"></i>Upload Image 1
+                        </label>
+                        <input type="file" class="form-control" id="image1" name="image1" accept="image/*">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="image2">Upload Image 2</label>
-                        <input type="file" class="form-control" id="image2" name="image2" accept="image/*" title="Select the second image to compare against the first.">
-                    </div>
-                </div>
-                <!-- Text Form -->
-                <div id="textForm" style="display:none;">
-                    <div class="mb-3">
-                        <label class="form-label" for="text1">Paste Text 1</label>
-                        <textarea class="form-control" id="text1" name="text1" rows="4" placeholder="Paste or type the first text document here..."></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label" for="text2">Paste Text 2</label>
-                        <textarea class="form-control" id="text2" name="text2" rows="4" placeholder="Paste or type the second text document here..."></textarea>
-                    </div>
-                </div>
-                <!-- Code Form -->
-                <div id="codeForm" style="display:none;">
-                    <div class="mb-3">
-                        <label class="form-label" for="code1">Paste Code 1</label>
-                        <textarea class="form-control" id="code1" name="code1" rows="4" placeholder="Paste or type the first code snippet here..."></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label" for="code2">Paste Code 2</label>
-                        <textarea class="form-control" id="code2" name="code2" rows="4" placeholder="Paste or type the second code snippet here..."></textarea>
+                        <label class="form-label" for="image2">
+                            <i class="fas fa-upload me-2"></i>Upload Image 2
+                        </label>
+                        <input type="file" class="form-control" id="image2" name="image2" accept="image/*">
                     </div>
                 </div>
+                
+                <!-- Text Tab -->
+                <div class="tab-content" id="textForm">
+                    <div class="mb-3">
+                        <label class="form-label" for="text1">
+                            <i class="fas fa-align-left me-2"></i>Paste Text 1
+                        </label>
+                        <textarea class="form-control" id="text1" name="text1" rows="5" placeholder="Paste or type the first text document here..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="text2">
+                            <i class="fas fa-align-left me-2"></i>Paste Text 2
+                        </label>
+                        <textarea class="form-control" id="text2" name="text2" rows="5" placeholder="Paste or type the second text document here..."></textarea>
+                    </div>
+                </div>
+                
+                <!-- Code Tab -->
+                <div class="tab-content" id="codeForm">
+                    <div class="mb-3">
+                        <label class="form-label" for="code1">
+                            <i class="fas fa-terminal me-2"></i>Paste Code 1
+                        </label>
+                        <textarea class="form-control" id="code1" name="code1" rows="5" placeholder="Paste or type the first code snippet here..." style="font-family: monospace;"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="code2">
+                            <i class="fas fa-terminal me-2"></i>Paste Code 2
+                        </label>
+                        <textarea class="form-control" id="code2" name="code2" rows="5" placeholder="Paste or type the second code snippet here..." style="font-family: monospace;"></textarea>
+                    </div>
+                </div>
+                
                 <div class="d-grid">
-                    <button type="submit" class="btn btn-primary btn-lg">Compare</button>
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-search-plus me-2"></i>Compare Now
+                    </button>
                 </div>
             </form>
+            
             {% if result %}
-                <div class="mt-4">
-                    <div class="card text-center {% if result.plagiarized %}border-danger{% elif result.paraphrased %}border-warning{% else %}border-success{% endif %}">
-                        <div class="card-body">
-                            {% if result.plagiarized %}
-                                <div class="result-icon text-danger mb-2">&#9888;</div>
-                                <h5 class="card-title text-danger">Potential Plagiarism Detected!</h5>
-                                <p class="card-text">The two items are nearly identical. This may indicate direct copying or only trivial changes.</p>
-                            {% elif result.paraphrased %}
-                                <div class="result-icon text-warning mb-2">&#128172;</div>
-                                <h5 class="card-title text-warning">Possible Paraphrasing Detected</h5>
-                                <p class="card-text">The two items are highly similar in meaning, but not identical. This may indicate paraphrasing or rewording.</p>
-                            {% else %}
-                                <div class="result-icon text-success mb-2">&#10004;</div>
-                                <h5 class="card-title text-success">Items are Likely Different</h5>
-                                <p class="card-text">The items do not appear to be plagiarized or copied from each other.</p>
-                            {% endif %}
-                            <p class="card-text">Similarity Score: <strong>{{ result.similarity }}</strong></p>
-                            {% if result.online_similarity %}
-                                <div class="alert alert-info mt-3" role="alert">
-                                    <b>Most similar online snippet found:</b><br>
-                                    <em>{{ result.online_similarity }}</em>
-                                </div>
-                            {% endif %}
-                            <div class="text-muted" style="font-size: 0.95em;">
-                                <span>&#9432;</span> Higher score means more similarity. For images, a low Hamming distance means high similarity. For text/code, a high semantic similarity means high similarity.
+                <div class="result-card card {% if result.plagiarized %}border-danger{% elif result.paraphrased %}border-warning{% else %}border-success{% endif %}">
+                    {% if result.plagiarized %}
+                        <div class="result-icon text-danger">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <h4 class="text-danger mb-3">⚠️ Potential Plagiarism Detected!</h4>
+                        <p class="lead">The two items are nearly identical. This may indicate direct copying or only trivial changes.</p>
+                    {% elif result.paraphrased %}
+                        <div class="result-icon text-warning">
+                            <i class="fas fa-comments"></i>
+                        </div>
+                        <h4 class="text-warning mb-3">💬 Possible Paraphrasing Detected</h4>
+                        <p class="lead">The items are highly similar in meaning but not identical. This may indicate paraphrasing or rewording.</p>
+                    {% else %}
+                        <div class="result-icon text-success">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <h4 class="text-success mb-3">✓ Items are Likely Different</h4>
+                        <p class="lead">The items do not appear to be plagiarized or copied from each other.</p>
+                    {% endif %}
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Similarity Score</div>
+                            <div class="stat-value">{{ result.similarity }}</div>
+                        </div>
+                        {% if result.detection_type %}
+                        <div class="stat-card">
+                            <div class="stat-label">Detection Type</div>
+                            <div class="stat-value" style="font-size: 1.1rem;">{{ result.detection_type }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    {% if result.reasons %}
+                    <div class="mt-4 text-start">
+                        <h6 class="mb-3"><i class="fas fa-list-ul me-2"></i>Detection Reasoning:</h6>
+                        <ul class="list-unstyled">
+                            {% for reason in result.reasons %}
+                            <li class="mb-2">
+                                <span class="badge-custom bg-info text-dark me-2">
+                                    <i class="fas fa-info-circle"></i>
+                                </span>
+                                {{ reason }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    
+                    {% if result.details %}
+                    <div class="mt-4 text-start">
+                        <h6 class="mb-3"><i class="fas fa-chart-bar me-2"></i>Component Scores:</h6>
+                        <div class="stats-grid">
+                            {% for key, value in result.details.items() %}
+                            <div class="stat-card">
+                                <div class="stat-label">{{ key|title }}</div>
+                                <div class="stat-value" style="font-size: 1.2rem;">{{ "%.2f"|format(value) }}</div>
                             </div>
+                            {% endfor %}
                         </div>
                     </div>
+                    {% endif %}
+                    
+                    {% if result.online_similarity %}
+                    <div class="alert alert-info mt-4" role="alert">
+                        <i class="fas fa-globe me-2"></i>
+                        <strong>Most similar online snippet found:</strong><br>
+                        <em>{{ result.online_similarity }}</em>
+                    </div>
+                    {% endif %}
                 </div>
             {% endif %}
         </div>
-        <footer class="text-center mt-5 text-muted">
-            <small>&copy; 2024 Multi-Modal Plagiarism Detector. Powered by perceptual hashing and text similarity technology.</small>
+        
+        <footer class="text-center mt-5">
+            <small>
+                <i class="fas fa-shield-alt me-2"></i>
+                &copy; 2024 Multi-Modal Plagiarism Detector. Powered by ML & perceptual hashing.
+            </small>
         </footer>
     </div>
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Theme Switcher
+        const html = document.documentElement;
+        const themeButtons = document.querySelectorAll('.theme-btn');
+        
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', savedTheme);
+        themeButtons.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.theme === savedTheme);
+        });
+        
+        themeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const theme = btn.dataset.theme;
+                html.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+                
+                themeButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+        
+        // Tab Switching
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const plagiarismTypeInput = document.getElementById('plagiarismType');
+        
+        tabButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetTab = btn.dataset.tab;
+                
+                // Update active tab button
+                tabButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                // Update active content
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(`${targetTab}Form`).classList.add('active');
+                
+                // Update hidden input
+                plagiarismTypeInput.value = targetTab;
+            });
+        });
+    </script>
 </body>
 </html> 
