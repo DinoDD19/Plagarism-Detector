@@ -110,6 +110,7 @@ def quick_similarity(text1, text2):
     return float(difflib.SequenceMatcher(None, text1, text2).ratio())
 
 def semantic_similarity(text1, text2):
+    """Compute semantic similarity; always returns a float."""
     try:
         # Prefer Hugging Face Inference API if enabled (no local downloads)
         if USE_HF_API and HF_API_TOKEN:
@@ -129,7 +130,8 @@ def semantic_similarity(text1, text2):
                 else:
                     # Any error: fallback
                     return quick_similarity(text1, text2)
-            except Exception:
+            except Exception as e:
+                print(f"[Semantic] HF API error: {e}")
                 return quick_similarity(text1, text2)
         
         # Local model path
@@ -145,9 +147,13 @@ def semantic_similarity(text1, text2):
             return 0.0
         return float(np.dot(v1, v2) / denom)
     except Exception as e:
-        print(f"Semantic similarity error: {e}")
+        print(f"[Semantic] Fallback error: {e}")
         # If the model isn't ready or any error occurs, use quick fallback
-        return quick_similarity(text1, text2)
+        try:
+            return float(quick_similarity(text1, text2))
+        except Exception as e2:
+            print(f"[Semantic] Quick fallback failed: {e2}")
+            return 0.0
 
 def search_google_snippets(query, num_results=5):
     # If API creds are not configured, skip online search gracefully
@@ -399,26 +405,39 @@ def index():
             text1 = request.form.get('text1', '').strip()
             text2 = request.form.get('text2', '').strip()
             if text1 and text2:
-                comp = text_similarity(text1, text2)
-                sim = comp['score']
-                is_paraphrase = comp['is_paraphrase']
-                reasons = comp['reasons']
-                
-                paraphrased = is_paraphrase and 0.75 < sim < 0.9
-                plagiarized = sim >= 0.9
-                result = {
-                    'similarity': f"{sim:.2f}",
-                    'plagiarized': plagiarized,
-                    'paraphrased': paraphrased,
-                    'online_similarity': None,
-                    'detection_type': 'Paraphrasing' if is_paraphrase else 'Direct Copy' if plagiarized else 'Similar Topic',
-                    'details': {
-                        'semantic_score': f"{comp['semantic']:.2f}",
-                        'lexical_score': f"{comp['lexical']:.2f}",
-                        'topic_match': f"{comp['topic']:.2f}",
-                    },
-                    'reasons': reasons,
-                }
+                try:
+                    comp = text_similarity(text1, text2)
+                    sim = comp['score']
+                    is_paraphrase = comp['is_paraphrase']
+                    reasons = comp['reasons']
+                    
+                    paraphrased = is_paraphrase and 0.75 < sim < 0.9
+                    plagiarized = sim >= 0.9
+                    result = {
+                        'similarity': f"{sim:.2f}",
+                        'plagiarized': plagiarized,
+                        'paraphrased': paraphrased,
+                        'online_similarity': None,
+                        'detection_type': 'Paraphrasing' if is_paraphrase else 'Direct Copy' if plagiarized else 'Similar Topic',
+                        'details': {
+                            'semantic_score': float(comp.get('semantic', 0)),
+                            'lexical_score': float(comp.get('lexical', 0)),
+                            'topic_match': float(comp.get('topic', 0)),
+                        },
+                        'reasons': reasons,
+                    }
+                except Exception as e:
+                    print(f"[Text Compare] Error: {e}")
+                    # Fallback: show basic comparison
+                    lex = float(difflib.SequenceMatcher(None, text1, text2).ratio())
+                    result = {
+                        'similarity': f"{lex:.2f}",
+                        'plagiarized': lex >= 0.9,
+                        'paraphrased': False,
+                        'online_similarity': None,
+                        'detection_type': 'Basic Comparison',
+                        'reasons': ['Fallback mode: basic lexical similarity used due to error'],
+                    }
             elif text1:
                 # Only one text provided, check against online sources
                 snippets = search_google_snippets(text1)
@@ -446,16 +465,27 @@ def index():
             code1 = request.form.get('code1', '').strip()
             code2 = request.form.get('code2', '').strip()
             if code1 and code2:
-                comp = code_similarity(code1, code2)
-                sim = comp['score']
-                paraphrased = 0.75 < sim < 0.9
-                plagiarized = sim >= 0.9
-                result = {
-                    'similarity': f"{sim:.2f}",
-                    'plagiarized': plagiarized,
-                    'paraphrased': paraphrased,
-                    'online_similarity': None
-                }
+                try:
+                    comp = code_similarity(code1, code2)
+                    sim = comp['score']
+                    paraphrased = 0.75 < sim < 0.9
+                    plagiarized = sim >= 0.9
+                    result = {
+                        'similarity': f"{sim:.2f}",
+                        'plagiarized': plagiarized,
+                        'paraphrased': paraphrased,
+                        'online_similarity': None
+                    }
+                except Exception as e:
+                    print(f"[Code Compare] Error: {e}")
+                    # Fallback: basic lexical comparison
+                    lex = float(difflib.SequenceMatcher(None, code1, code2).ratio())
+                    result = {
+                        'similarity': f"{lex:.2f}",
+                        'plagiarized': lex >= 0.9,
+                        'paraphrased': False,
+                        'online_similarity': None
+                    }
     return render_template('index.html', result=result)
 
 if __name__ == '__main__':
