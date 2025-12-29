@@ -5,6 +5,7 @@ import os
 import threading
 import difflib
 import requests
+import numpy as np
 
 app = Flask(__name__, template_folder='plagirism/templates', static_folder='plagirism')
 app.config['UPLOAD_FOLDER'] = 'plagirism/uploads'
@@ -16,10 +17,9 @@ GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID', '')
 # Ensure upload folder exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Lazy-load ML packages - install on first use to keep build fast
+# Lazy-load sentence transformer model
 embedder = None
-ml_packages_installed = False
-ml_loading_status = {'status': 'not_started', 'message': '', 'progress': 0}
+ml_loading_status = {'status': 'not_started', 'message': 'ML packages ready', 'progress': 0}
 MODEL_NAME = os.getenv('SENTENCE_MODEL', 'all-MiniLM-L6-v2')
 HF_CACHE_DIR = os.getenv('HF_HOME', os.path.join('/opt/render/project', '.cache', 'huggingface'))
 os.makedirs(HF_CACHE_DIR, exist_ok=True)
@@ -30,35 +30,13 @@ def update_loading_status(status, message, progress):
     ml_loading_status = {'status': status, 'message': message, 'progress': progress}
     print(f"[ML Loading] {message} ({progress}%)")
 
-def install_ml_packages():
-    """Install heavy ML packages on first use, not during build"""
-    global ml_packages_installed
-    if ml_packages_installed:
-        return True
-    
-    try:
-        import subprocess
-        import sys
-        update_loading_status('installing', 'Installing ML packages...', 10)
-        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-q', 'sentence-transformers>=2.2.0', 'numpy>=1.24.0'])
-        ml_packages_installed = True
-        update_loading_status('packages_installed', 'ML packages installed successfully!', 50)
-        return True
-    except Exception as e:
-        update_loading_status('error', f'Failed to install ML packages: {e}', 0)
-        print(f"Failed to install ML packages: {e}")
-        return False
-
 def get_embedder():
     global embedder
     if embedder is None:
-        # Install packages first if needed
-        if not install_ml_packages():
-            return None
-        
         try:
-            update_loading_status('loading_model', 'Downloading ML model (one-time setup)...', 60)
+            update_loading_status('loading_model', 'Loading ML model (first use may take a minute)...', 50)
             from sentence_transformers import SentenceTransformer
+            import numpy as np
             embedder = SentenceTransformer(MODEL_NAME, cache_folder=HF_CACHE_DIR)
             update_loading_status('ready', 'ML model ready!', 100)
         except Exception as e:
@@ -78,7 +56,6 @@ def semantic_similarity(text1, text2):
             # Fallback to quick similarity if ML not available
             return quick_similarity(text1, text2)
         
-        import numpy as np
         embeddings = model.encode([text1, text2])
         v1, v2 = np.array(embeddings[0]), np.array(embeddings[1])
         denom = (np.linalg.norm(v1) * np.linalg.norm(v2))
