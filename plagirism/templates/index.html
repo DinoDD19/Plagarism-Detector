@@ -718,6 +718,18 @@
                 
                 // Update hidden input
                 plagiarismTypeInput.value = targetTab;
+
+                // If user selects Text tab, proactively warm the model
+                if (targetTab === 'text') {
+                    // Show loading panel and kick off warm-up
+                    loadingOverlay.classList.add('active');
+                    loadingMessage.textContent = 'Preparing text analysis...';
+                    progressBar.style.width = '10%';
+                    progressText.textContent = '10%';
+                    try {
+                        fetch('/warm-text-model', { method: 'POST' });
+                    } catch (e) { /* ignore */ }
+                }
             });
         });
         

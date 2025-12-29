@@ -5,7 +5,6 @@ import os
 import threading
 import difflib
 import requests
-import numpy as np
 
 app = Flask(__name__, template_folder='plagirism/templates', static_folder='plagirism')
 app.config['UPLOAD_FOLDER'] = 'plagirism/uploads'
@@ -17,9 +16,10 @@ GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID', '')
 # Ensure upload folder exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Lazy-load sentence transformer model
+# Lazy-load sentence transformer model on demand (text only)
 embedder = None
-ml_loading_status = {'status': 'not_started', 'message': 'ML packages ready', 'progress': 0}
+ml_packages_installed = False
+ml_loading_status = {'status': 'not_started', 'message': '', 'progress': 0}
 MODEL_NAME = os.getenv('SENTENCE_MODEL', 'all-MiniLM-L6-v2')
 HF_CACHE_DIR = os.getenv('HF_HOME', os.path.join('/opt/render/project', '.cache', 'huggingface'))
 os.makedirs(HF_CACHE_DIR, exist_ok=True)
@@ -30,18 +30,36 @@ def update_loading_status(status, message, progress):
     ml_loading_status = {'status': status, 'message': message, 'progress': progress}
     print(f"[ML Loading] {message} ({progress}%)")
 
+def install_ml_packages():
+    """Install heavy ML packages only when needed (Text mode)."""
+    global ml_packages_installed
+    if ml_packages_installed:
+        return True
+    try:
+        import subprocess, sys
+        update_loading_status('installing', 'Installing text ML packages...', 10)
+        # Install sentence-transformers and numpy when user selects Text mode
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-q', 'sentence-transformers>=2.2.0', 'numpy>=1.24.0'])
+        ml_packages_installed = True
+        update_loading_status('packages_installed', 'Packages installed. Preparing model...', 50)
+        return True
+    except Exception as e:
+        update_loading_status('error', f'Failed to install ML packages: {e}', 0)
+        return False
+
 def get_embedder():
     global embedder
     if embedder is None:
+        # Ensure required packages are present
+        if not install_ml_packages():
+            return None
         try:
-            update_loading_status('loading_model', 'Loading ML model (first use may take a minute)...', 50)
+            update_loading_status('loading_model', 'Downloading ML model (one-time setup)...', 60)
             from sentence_transformers import SentenceTransformer
-            import numpy as np
             embedder = SentenceTransformer(MODEL_NAME, cache_folder=HF_CACHE_DIR)
             update_loading_status('ready', 'ML model ready!', 100)
         except Exception as e:
             update_loading_status('error', f'Failed to load model: {e}', 0)
-            print(f"Failed to load model: {e}")
             return None
     return embedder
 
@@ -55,7 +73,7 @@ def semantic_similarity(text1, text2):
         if model is None:
             # Fallback to quick similarity if ML not available
             return quick_similarity(text1, text2)
-        
+        import numpy as np
         embeddings = model.encode([text1, text2])
         v1, v2 = np.array(embeddings[0]), np.array(embeddings[1])
         denom = (np.linalg.norm(v1) * np.linalg.norm(v2))
@@ -87,6 +105,17 @@ def search_google_snippets(query, num_results=5):
             if snippet:
                 snippets.append(snippet)
     return snippets
+
+# Endpoint to proactively warm text model when user chooses Text mode
+@app.route('/warm-text-model', methods=['POST'])
+def warm_text_model():
+    def _bg_load():
+        try:
+            _ = get_embedder()
+        except Exception:
+            pass
+    threading.Thread(target=_bg_load, daemon=True).start()
+    return {'status': 'started'}
 
 # ---------- Text helpers (ensemble similarity) ----------
 def _normalize_text(s: str) -> str:
