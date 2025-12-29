@@ -19,6 +19,4 @@ build
 *.egg-info
 .vscode
 .idea
-uploads/*
-!uploads/.gitkeep
 *.log
