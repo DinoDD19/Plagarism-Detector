@@ -2,6 +2,8 @@ from flask import Flask, render_template, request
 from PIL import Image
 import imagehash
 import os
+import numpy as np
+import threading
 import difflib
 import requests
 
@@ -15,12 +17,36 @@ GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID', '')
 # Ensure upload folder exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-def similarity_score(text1, text2):
-    """
-    Calculate similarity using sequence matching (0.0 to 1.0).
-    Fast, no external ML model needed.
-    """
-    return float(difflib.SequenceMatcher(None, text1.lower(), text2.lower()).ratio())
+# Lazy-load the sentence transformer model to speed up boot
+embedder = None
+MODEL_NAME = os.getenv('SENTENCE_MODEL', 'all-MiniLM-L6-v2')
+# Persist HF cache across deploys (Render persistent dir)
+HF_CACHE_DIR = os.getenv('HF_HOME', os.path.join('/opt/render/project', '.cache', 'huggingface'))
+os.makedirs(HF_CACHE_DIR, exist_ok=True)
+
+def get_embedder():
+    global embedder
+    if embedder is None:
+        from sentence_transformers import SentenceTransformer
+        embedder = SentenceTransformer(MODEL_NAME, cache_folder=HF_CACHE_DIR)
+    return embedder
+
+def quick_similarity(text1, text2):
+    # Fast lexical similarity as a fallback while the model warms up
+    return float(difflib.SequenceMatcher(None, text1, text2).ratio())
+
+def semantic_similarity(text1, text2):
+    try:
+        model = get_embedder()
+        embeddings = model.encode([text1, text2])
+        v1, v2 = np.array(embeddings[0]), np.array(embeddings[1])
+        denom = (np.linalg.norm(v1) * np.linalg.norm(v2))
+        if denom == 0:
+            return 0.0
+        return float(np.dot(v1, v2) / denom)
+    except Exception:
+        # If the model isn't ready or any error occurs, use quick fallback
+        return quick_similarity(text1, text2)
 
 def search_google_snippets(query, num_results=5):
     # If API creds are not configured, skip online search gracefully
@@ -70,7 +96,7 @@ def index():
             text1 = request.form.get('text1', '').strip()
             text2 = request.form.get('text2', '').strip()
             if text1 and text2:
-                sim = similarity_score(text1, text2)
+                sim = semantic_similarity(text1, text2)
                 paraphrased = 0.75 < sim < 0.95
                 plagiarized = sim >= 0.95
                 result = {
@@ -85,7 +111,7 @@ def index():
                 max_sim = 0
                 best_snippet = ''
                 for snippet in snippets:
-                    sim = similarity_score(text1, snippet)
+                    sim = semantic_similarity(text1, snippet)
                     if sim > max_sim:
                         max_sim = sim
                         best_snippet = snippet
@@ -101,7 +127,7 @@ def index():
             code1 = request.form.get('code1', '').strip()
             code2 = request.form.get('code2', '').strip()
             if code1 and code2:
-                sim = similarity_score(code1, code2)
+                sim = semantic_similarity(code1, code2)
                 paraphrased = 0.75 < sim < 0.95
                 plagiarized = sim >= 0.95
                 result = {
